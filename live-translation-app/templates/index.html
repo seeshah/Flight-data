@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Translation App</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            color: #e0e0e0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        header {
+            text-align: center;
+            padding: 2rem 1rem 1rem;
+        }
+
+        header h1 {
+            font-size: 2rem;
+            background: linear-gradient(90deg, #00d2ff, #928dab);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        header p {
+            color: #888;
+            margin-top: 0.4rem;
+            font-size: 0.95rem;
+        }
+
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            justify-content: center;
+            align-items: center;
+            margin: 1.5rem 0;
+            padding: 0 1rem;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.3rem;
+        }
+
+        .control-group label {
+            font-size: 0.8rem;
+            color: #aaa;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        select {
+            background: rgba(255, 255, 255, 0.08);
+            color: #e0e0e0;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 8px;
+            padding: 0.6rem 1rem;
+            font-size: 0.95rem;
+            cursor: pointer;
+            min-width: 180px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        select:focus {
+            border-color: #00d2ff;
+        }
+
+        select option {
+            background: #1a1a2e;
+            color: #e0e0e0;
+        }
+
+        .mic-button {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            border: 3px solid rgba(255, 255, 255, 0.15);
+            background: rgba(255, 255, 255, 0.05);
+            color: #e0e0e0;
+            font-size: 2rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .mic-button:hover {
+            background: rgba(0, 210, 255, 0.1);
+            border-color: #00d2ff;
+        }
+
+        .mic-button.recording {
+            border-color: #ff4757;
+            background: rgba(255, 71, 87, 0.15);
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.4); }
+            70% { box-shadow: 0 0 0 20px rgba(255, 71, 87, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 71, 87, 0); }
+        }
+
+        .status {
+            text-align: center;
+            font-size: 0.85rem;
+            color: #888;
+            margin: 0.5rem 0;
+            min-height: 1.2rem;
+        }
+
+        .status.active {
+            color: #ff4757;
+        }
+
+        .panels {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+            width: 100%;
+            max-width: 1100px;
+            padding: 0 1.5rem 2rem;
+            flex: 1;
+        }
+
+        .panel {
+            flex: 1;
+            min-width: 300px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .panel-header h2 {
+            font-size: 1rem;
+            color: #aaa;
+            font-weight: 500;
+        }
+
+        .clear-btn {
+            background: none;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #888;
+            padding: 0.3rem 0.7rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .clear-btn:hover {
+            border-color: #ff4757;
+            color: #ff4757;
+        }
+
+        .text-area {
+            flex: 1;
+            min-height: 200px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 12px;
+            padding: 1rem;
+            font-size: 1.05rem;
+            line-height: 1.7;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .text-area .interim {
+            color: #666;
+            font-style: italic;
+        }
+
+        .text-area .final {
+            color: #e0e0e0;
+        }
+
+        .translated-text {
+            color: #00d2ff;
+        }
+
+        .error-banner {
+            background: rgba(255, 71, 87, 0.15);
+            border: 1px solid rgba(255, 71, 87, 0.3);
+            color: #ff6b7a;
+            padding: 0.8rem 1.2rem;
+            border-radius: 10px;
+            margin: 0 1.5rem;
+            text-align: center;
+            font-size: 0.9rem;
+            display: none;
+        }
+
+        footer {
+            text-align: center;
+            padding: 1rem;
+            color: #555;
+            font-size: 0.8rem;
+        }
+
+        @media (max-width: 700px) {
+            .panels { flex-direction: column; }
+            .panel { min-width: unset; }
+            header h1 { font-size: 1.5rem; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Live Translation</h1>
+        <p>Real-time speech transcription &amp; translation</p>
+    </header>
+
+    <div class="controls">
+        <div class="control-group">
+            <label>Speak in</label>
+            <select id="source-lang">
+                <option value="en-US">English (US)</option>
+                <option value="en-GB">English (UK)</option>
+                <option value="es-ES">Spanish</option>
+                <option value="fr-FR">French</option>
+                <option value="de-DE">German</option>
+                <option value="it-IT">Italian</option>
+                <option value="pt-BR">Portuguese (BR)</option>
+                <option value="ru-RU">Russian</option>
+                <option value="zh-CN">Chinese (Mandarin)</option>
+                <option value="ja-JP">Japanese</option>
+                <option value="ko-KR">Korean</option>
+                <option value="ar-SA">Arabic</option>
+                <option value="hi-IN">Hindi</option>
+                <option value="nl-NL">Dutch</option>
+                <option value="pl-PL">Polish</option>
+                <option value="tr-TR">Turkish</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <label>Translate to</label>
+            <select id="target-lang">
+                <option value="es">Spanish</option>
+                <option value="en">English</option>
+                <option value="fr">French</option>
+                <option value="de">German</option>
+                <option value="it">Italian</option>
+                <option value="pt">Portuguese</option>
+                <option value="ru">Russian</option>
+                <option value="zh-cn">Chinese (Simplified)</option>
+                <option value="ja">Japanese</option>
+                <option value="ko">Korean</option>
+                <option value="ar">Arabic</option>
+                <option value="hi">Hindi</option>
+                <option value="nl">Dutch</option>
+                <option value="pl">Polish</option>
+                <option value="tr">Turkish</option>
+                <option value="sv">Swedish</option>
+                <option value="da">Danish</option>
+                <option value="fi">Finnish</option>
+                <option value="el">Greek</option>
+                <option value="he">Hebrew</option>
+                <option value="th">Thai</option>
+                <option value="vi">Vietnamese</option>
+                <option value="uk">Ukrainian</option>
+            </select>
+        </div>
+    </div>
+
+    <button class="mic-button" id="mic-btn" title="Start / Stop recording">&#127908;</button>
+    <div class="status" id="status">Click the microphone to start</div>
+
+    <div class="error-banner" id="error-banner"></div>
+
+    <div class="panels">
+        <div class="panel">
+            <div class="panel-header">
+                <h2 id="transcript-label">Transcript</h2>
+                <button class="clear-btn" id="clear-transcript">Clear</button>
+            </div>
+            <div class="text-area" id="transcript"></div>
+        </div>
+        <div class="panel">
+            <div class="panel-header">
+                <h2 id="translation-label">Translation</h2>
+                <button class="clear-btn" id="clear-translation">Clear</button>
+            </div>
+            <div class="text-area" id="translation"></div>
+        </div>
+    </div>
+
+    <footer>Uses Web Speech API for transcription &bull; Powered by Flask</footer>
+
+    <script>
+        const micBtn = document.getElementById('mic-btn');
+        const statusEl = document.getElementById('status');
+        const transcriptEl = document.getElementById('transcript');
+        const translationEl = document.getElementById('translation');
+        const errorBanner = document.getElementById('error-banner');
+        const sourceLang = document.getElementById('source-lang');
+        const targetLang = document.getElementById('target-lang');
+        const clearTranscript = document.getElementById('clear-transcript');
+        const clearTranslation = document.getElementById('clear-translation');
+
+        let recognition = null;
+        let isRecording = false;
+        let finalTranscript = '';
+        let translationBuffer = '';
+        let translateTimeout = null;
+
+        // Check browser support
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            showError('Your browser does not support the Web Speech API. Please use Chrome, Edge, or Safari.');
+            micBtn.disabled = true;
+        }
+
+        function showError(msg) {
+            errorBanner.textContent = msg;
+            errorBanner.style.display = 'block';
+            setTimeout(() => { errorBanner.style.display = 'none'; }, 8000);
+        }
+
+        function initRecognition() {
+            recognition = new SpeechRecognition();
+            recognition.continuous = true;
+            recognition.interimResults = true;
+            recognition.lang = sourceLang.value;
+
+            recognition.onresult = (event) => {
+                let interim = '';
+                let newFinal = '';
+
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    const transcript = event.results[i][0].transcript;
+                    if (event.results[i].isFinal) {
+                        newFinal += transcript + ' ';
+                    } else {
+                        interim += transcript;
+                    }
+                }
+
+                if (newFinal) {
+                    finalTranscript += newFinal;
+                    requestTranslation(newFinal);
+                }
+
+                transcriptEl.innerHTML =
+                    '<span class="final">' + escapeHtml(finalTranscript) + '</span>' +
+                    '<span class="interim">' + escapeHtml(interim) + '</span>';
+
+                // Auto-scroll
+                transcriptEl.scrollTop = transcriptEl.scrollHeight;
+            };
+
+            recognition.onerror = (event) => {
+                if (event.error === 'no-speech') return; // Ignore no-speech
+                console.error('Speech recognition error:', event.error);
+                if (event.error === 'not-allowed') {
+                    showError('Microphone access denied. Please allow microphone permissions.');
+                    stopRecording();
+                }
+            };
+
+            recognition.onend = () => {
+                // Auto-restart if still recording
+                if (isRecording) {
+                    try {
+                        recognition.start();
+                    } catch (e) {
+                        // Ignore if already started
+                    }
+                }
+            };
+        }
+
+        function startRecording() {
+            finalTranscript = '';
+            translationBuffer = '';
+            transcriptEl.innerHTML = '';
+            translationEl.innerHTML = '';
+            initRecognition();
+            recognition.start();
+            isRecording = true;
+            micBtn.classList.add('recording');
+            statusEl.textContent = 'Listening...';
+            statusEl.classList.add('active');
+        }
+
+        function stopRecording() {
+            isRecording = false;
+            if (recognition) {
+                recognition.stop();
+                recognition = null;
+            }
+            micBtn.classList.remove('recording');
+            statusEl.textContent = 'Click the microphone to start';
+            statusEl.classList.remove('active');
+        }
+
+        micBtn.addEventListener('click', () => {
+            if (isRecording) {
+                stopRecording();
+            } else {
+                startRecording();
+            }
+        });
+
+        // Change source language while recording
+        sourceLang.addEventListener('change', () => {
+            if (isRecording) {
+                stopRecording();
+                startRecording();
+            }
+        });
+
+        // Re-translate existing text when target language changes
+        targetLang.addEventListener('change', () => {
+            if (finalTranscript.trim()) {
+                translationBuffer = '';
+                translationEl.innerHTML = '';
+                requestTranslation(finalTranscript);
+            }
+        });
+
+        clearTranscript.addEventListener('click', () => {
+            finalTranscript = '';
+            transcriptEl.innerHTML = '';
+        });
+
+        clearTranslation.addEventListener('click', () => {
+            translationBuffer = '';
+            translationEl.innerHTML = '';
+        });
+
+        function requestTranslation(text) {
+            if (!text.trim()) return;
+
+            // Debounce: wait 300ms after last final result before translating
+            clearTimeout(translateTimeout);
+            translateTimeout = setTimeout(() => {
+                fetch('/translate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        text: text.trim(),
+                        source: sourceLang.value.split('-')[0],
+                        target: targetLang.value
+                    })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.error) {
+                        showError('Translation error: ' + data.error);
+                        return;
+                    }
+                    translationBuffer += data.translated + ' ';
+                    translationEl.innerHTML = '<span class="translated-text">' + escapeHtml(translationBuffer) + '</span>';
+                    translationEl.scrollTop = translationEl.scrollHeight;
+                })
+                .catch(err => {
+                    console.error('Translation fetch error:', err);
+                    showError('Could not reach translation server.');
+                });
+            }, 300);
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>
