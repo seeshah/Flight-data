@@ -1,0 +1,65 @@
+name: Bungalow availability check
+
+on:
+  schedule:
+    # Every 5 minutes. GitHub may delay or skip scheduled runs under load.
+    # Note: scheduled workflows only run on the repo's default branch.
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+permissions:
+  issues: write
+  contents: read
+
+concurrency:
+  group: bungalow-notifier
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Check Resy for openings
+        id: check
+        run: python restaurant-notifier/check_bungalow.py
+
+      - name: Ensure alert label exists
+        if: steps.check.outputs.found == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh label create bungalow-alert \
+            --color FFA500 \
+            --description "Bungalow availability alert" \
+            2>/dev/null || true
+
+      - name: Look for an existing open alert
+        if: steps.check.outputs.found == 'true'
+        id: existing
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TITLE: ${{ steps.check.outputs.title }}
+        run: |
+          number=$(gh issue list \
+            --label bungalow-alert \
+            --state open \
+            --json number,title \
+            --jq --arg t "$TITLE" 'map(select(.title == $t)) | (.[0].number // empty)')
+          echo "number=$number" >> "$GITHUB_OUTPUT"
+
+      - name: Open alert issue
+        if: steps.check.outputs.found == 'true' && steps.existing.outputs.number == ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TITLE: ${{ steps.check.outputs.title }}
+        run: |
+          gh issue create \
+            --title "$TITLE" \
+            --body-file body.md \
+            --label bungalow-alert
